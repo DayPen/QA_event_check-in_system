@@ -1,0 +1,35 @@
+#Name the workflow
+name: CI (Continuous Integration) and Testing
+
+#Trigger to run the workflow
+on:
+  push:
+    branches: master
+  pull_request:
+    branches: master
+
+#Job to Run
+jobs:
+  #name of the jobs:
+  build:
+    #the type of runner machine
+    runs-on: ubuntu-latest
+
+    #steps we want to run on the runner machine
+    steps:
+      #step-1: checkout the code from the repo (download the repo on the runner)
+      - uses: actions/checkout@v4
+
+      #step-2: set-up Node.js environment on the runner -- WILL BE DIFFERENT using JUnit5 to test Java instead of JavaScript
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      #step-3: Install the repo's demendencies form package.json
+      - name: Install dependencies
+        run: npm install
+
+      #step-4: Run the unit and integration tests
+      - name: Run Tests
+        run: npm test
