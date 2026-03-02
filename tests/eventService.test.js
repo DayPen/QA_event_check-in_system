@@ -6,6 +6,8 @@ const { createDb, initSchema, closeDb } = require("../eventDb");
 const { createEvent, registerAttendee, checkIn } = require("../eventService");
 const { printAllAttendees } = require("../eventRepo");
 
+// includes 5 meaningful unit tests & 3 integration tests:
+
 test.describe("Event Check-In System integration", () => {
   let db;
 
