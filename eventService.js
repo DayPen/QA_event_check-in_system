@@ -15,7 +15,7 @@ const validateEvent = (event) => {
   if (typeof event.name !== "string" || event.name.trim() === "") {
     throw new TypeError("event.name must be a NON-empty string");
   }
-  if (typeof event.date !== "string" || event.name.trim() === "") {
+  if (typeof event.date !== "string" || event.date.trim() === "") {
     throw new TypeError("event.date must be a NON-empty string");
   }
 };
@@ -51,14 +51,24 @@ const registerAttendee = async (db, attendee, eventId) => {
 
   if (!event) throw new Error("Event NOT found.");
 
-  return addAttendee(db, {
-    name: attendee.name.trim(),
-    email: attendee.email.trim(),
-    eventId,
-  });
+  try {
+    return await addAttendee(db, {
+      name: attendee.name.trim(),
+      email: attendee.email.trim(),
+      eventId,
+    });
+  } catch (err) {
+    if (
+      err.code === "SQLITE_CONSTRAINT" ||
+      err.message & err.message.includes("UNIQUE constraint failed")
+    ) {
+      throw new Error("Info rec'd NOT UNIQUE to this event");
+    }
+    throw err;
+  }
 };
 
-const checkIn = (db, email, eventId) => {
+const checkIn = async (db, email, eventId) => {
   if (typeof email !== "string" || email.trim() === "") {
     throw new TypeError("email must be a NON-empty string");
   }
@@ -67,7 +77,7 @@ const checkIn = (db, email, eventId) => {
     throw new TypeError("eventId MUST be an integer");
   }
 
-  checkInAttendee(db, email.trim(), eventId);
+  await checkInAttendee(db, email.trim(), eventId);
 };
 
 const getAttendanceInfo = async (db, eventId) => {
@@ -81,7 +91,7 @@ const getAttendanceInfo = async (db, eventId) => {
 
   const attendees = await printAllAttendees(db, eventId);
   const checkedInList = attendees.filter(
-    (attendees) => attendees.checkedIn === 1,
+    (attendee) => attendee.checkedIn === 1,
   );
   // default = 0 (not checked in)
 

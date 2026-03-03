@@ -3,7 +3,12 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createDb, initSchema, closeDb } = require("../eventDb");
-const { createEvent, registerAttendee, checkIn } = require("../eventService");
+const {
+  createEvent,
+  registerAttendee,
+  checkIn,
+  getAttendanceInfo,
+} = require("../eventService");
 const { printAllAttendees } = require("../eventRepo");
 
 test.describe("Event Check-In System integration", () => {
@@ -22,14 +27,14 @@ test.describe("Event Check-In System integration", () => {
   // unit test #1: create an event and register attendee
   // //////////////////////////////////////////////////////////////////
   test("create an event and register attendee", async () => {
-    const saved = await createEvent(db, {
+    const event = await createEvent(db, {
       name: " Birthday Party ",
       date: "2026-05-20",
     });
 
-    assert.ok(saved.id > 0); //make sure an id was assigned
-    assert.strictEqual(saved.name, "Birthday Party"); //name was trimmed
-    assert.strictEqual(saved.date, "2026-05-20"); // date was stored
+    assert.ok(event.id > 0); //make sure an id was assigned
+    assert.strictEqual(event.name, "Birthday Party"); //name was trimmed
+    assert.strictEqual(event.date, "2026-05-20"); // date was stored
 
     const attendee = await registerAttendee(
       db,
@@ -37,7 +42,7 @@ test.describe("Event Check-In System integration", () => {
         name: " DayDay ",
         email: "day@email.com",
       },
-      saved.id,
+      event.id,
     );
     assert.ok(attendee.id > 0);
     assert.strictEqual(attendee.name, "DayDay");
@@ -59,35 +64,29 @@ test.describe("Event Check-In System integration", () => {
       },
       event.id,
     );
-    await assert.rejects(() =>
-      registerAttendee(
-        db,
-        {
-          name: "Emmy",
-          email: "day@email.com", // same email as DayDay - NOT unique to event, should FAIL
-        },
-        event.id,
-      ),
+    await assert.rejects(
+      () =>
+        registerAttendee(
+          db,
+          {
+            name: "Emmy",
+            email: "day@email.com", // same email as DayDay - NOT unique to event, should FAIL
+          },
+          event.id,
+        ),
+      { message: "Info rec'd NOT UNIQUE to this event" },
     );
   });
   // //////////////////////////////////////////////////////////////////
   // unit test #3: checkIn rejects UNREGISTERED attendee
   // //////////////////////////////////////////////////////////////////
   test("checkIn rejects UNREGISTERED attendee", async () => {
-    const event = await createEvent(db, {
-      name: "TriviaNight",
-      date: "2026-03-07",
+    await assert.rejects(() => checkIn(db, "notRegistered@email.com", 1), {
+      message: "attendee NOT registered.",
     });
-
-    await assert.rejects(
-      () => checkIn(db, "NOTregistered@email.com", event.id),
-      {
-        message: "attendee NOT registered",
-      },
-    );
   });
   // //////////////////////////////////////////////////////////////////
-  //
+  //unit test #4: DUPLICATE registration for the same event is REJECTED
   // //////////////////////////////////////////////////////////////////
   test("DUPLICATE registration for the same event is REJECTED", async () => {
     const event = await createEvent(db, {
@@ -102,17 +101,49 @@ test.describe("Event Check-In System integration", () => {
       },
       event.id,
     );
-    await assert.rejects(() =>
-      registerAttendee(
-        db,
-        { name: "DayDay", email: "day@email.com" },
-        event.id,
-      ),
+    await assert.rejects(
+      () =>
+        registerAttendee(
+          db,
+          { name: "DayDay", email: "day@email.com" },
+          event.id,
+        ),
+      { message: "Info rec'd NOT UNIQUE to this event" },
     );
   });
   // //////////////////////////////////////////////////////////////////
-  //
+  // unit test #5: invalid inputs throw TypeError
   // //////////////////////////////////////////////////////////////////
+  test("invalid inputs throw TypeError", async () => {
+    await assert.rejects(() => createEvent(db, { name: "", date: "" }), {
+      name: "TypeError",
+    });
+    await assert.rejects(
+      () => createEvent(db, { name: "HomeComing2026", date: "" }),
+      {
+        name: "TypeError",
+      },
+    );
+    await assert.rejects(
+      () => createEvent(db, { name: "HomeComing2026", date: "" }),
+      { name: "TypeError" },
+    );
+
+    await assert.rejects(() => registerAttendee(db, "", 1), {
+      name: "TypeError",
+    });
+    await assert.rejects(
+      () => registerAttendee(db, { name: "DayDay", email: "" }, 1),
+      { name: "TypeError" },
+    );
+    await assert.rejects(() => getAttendanceInfo(db, ""), {
+      name: "TypeError",
+    });
+  });
+
+  // /////////////////////////////////////////////////////////////////////
+  // Integration test 1: same attendee can register for DIFFERENT events
+  // /////////////////////////////////////////////////////////////////////
   test("same attendee can register for DIFFERENT events", async () => {
     const event1 = await createEvent(db, {
       name: "StudySession1",
@@ -123,11 +154,19 @@ test.describe("Event Check-In System integration", () => {
       date: "2026-05-04",
     });
 
-    await registerAttendee(db, { name: "DayDay", email: "day@email.com" }, 1);
-    await registerAttendee(db, { name: "DayDay", email: "day@email.com" }, 2);
+    await registerAttendee(
+      db,
+      { name: "DayDay", email: "day@email.com" },
+      event1.id,
+    );
+    await registerAttendee(
+      db,
+      { name: "DayDay", email: "day@email.com" },
+      event2.id,
+    );
 
-    const rosterSS1 = await printAllAttendees(db, "StudySession1");
-    const rosterSS2 = await printAllAttendees(db, "StudySession2");
+    const rosterSS1 = await printAllAttendees(db, event1.id);
+    const rosterSS2 = await printAllAttendees(db, event2.id);
 
     assert.deepStrictEqual(
       rosterSS1.map((attendee) => attendee.name),
@@ -138,35 +177,12 @@ test.describe("Event Check-In System integration", () => {
       ["DayDay"],
     );
   });
-  // //////////////////////////////////////////////////////////////////
-  //
-  // //////////////////////////////////////////////////////////////////
-  test("invalid inputs throw TypeError", async () => {
-    await assert.rejects(() => createEvent(db, { name: "", date: "T" }), {
-      name: "TypeError",
-    });
-    await assert.rejects(
-      () => createEvent(db, { name: "HomeComing2026", date: "" }),
-      { name: "TypeError" },
-    );
-    await assert.rejects(
-      () => createEvent(db, { name: "HomeComing2026", date: "T" }),
-      { name: "TypeError" },
-    );
-
-    await createEvent(db, {
-      name: "HomeComing2026",
-      date: "2026-09-09",
-    });
-
-    await assert.rejects(() => registerAttendee(db, "", "HomeComing2026"), {
-      name: "TypeError",
-    });
-    await assert.rejects(() => registerAttendee(db, "DayDay", ""), {
-      name: "TypeError",
-    });
-    assert.throws(() => printAllAttendees(db, ""), {
-      name: "TypeError",
-    });
-  });
 });
+
+// //////////////////////////////////////////////////////////////////////////
+// Integration test 2: check-in allows REGISTERED attendee to check-in
+// //////////////////////////////////////////////////////////////////////////
+
+// /////////////////////////////////////////////////////////////////////
+// Integration test 3: getAttendanceInfo returns stats
+// /////////////////////////////////////////////////////////////////////
