@@ -48,10 +48,11 @@ const initSchema = async (db) => {
     `CREATE TABLE attendees (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
-      email TEXT NOT NULL UNIQUE,
+      email TEXT NOT NULL,
       event_id INTEGER NOT NULL,
       checked_in INTEGER NOT NULL DEFAULT 0,
       FOREIGN KEY(event_id) REFERENCES events(id)
+      UNIQUE(email, event_id)
     )`,
   );
 };

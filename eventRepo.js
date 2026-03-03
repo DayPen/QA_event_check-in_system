@@ -11,25 +11,32 @@ const addEvent = async (db, event) => {
 
   return {
     id: result.lastID,
-    ...event,
+    name: event.name,
+    date: event.date,
   };
 };
 
 const findEventById = (db, eventId) => {
-  return get(db, "SELECT id, name, date FROM events WHERE code = ?", [eventId]);
+  return get(db, "SELECT id, name, date FROM events WHERE id = ?", [eventId]);
 };
 
 const addAttendee = async (db, attendee) => {
-  const result = await get(
+  const result = await run(
     db,
     "INSERT INTO attendees (name, email, event_id) VALUES (?, ?, ?)",
     [attendee.name, attendee.email, attendee.eventId],
   );
-  return { id: result.lastID, ...attendee, checkedIn: 0 };
+  return {
+    id: result.lastID,
+    name: attendee.name,
+    email: attendee.email,
+    eventId: attendee.eventId,
+    checkedIn: 0, // defaulting to NOT checked in
+  };
 };
 
 const findAttendee = async (db, email, eventId) => {
-  get(
+  return get(
     db,
     "SELECT id, name, email, checked_in AS checkedIn FROM attendees where email = ? AND event_id = ?",
     [email, eventId],
@@ -38,24 +45,19 @@ const findAttendee = async (db, email, eventId) => {
 
 const checkInAttendee = async (db, email, eventId) => {
   const attendee = await findAttendee(db, email, eventId);
-  if (!attendee) throw Error("Attendee NOT registered.");
+  if (!attendee) {
+    throw new Error("attendee NOT registered.");
+  }
   await run(db, "UPDATE attendees SET checked_in = 1 WHERE id = ?", [
     attendee.id,
   ]);
-  return attendee;
+  return { ...attendee, checkedIn: 1 }; // no longer 0 (false)
 };
-
-const printCheckedInAttendees = (db, eventId) =>
-  all(
-    db,
-    "SELECT name, email FROM attendees WHERE event_id = ? AND checked_in = 1",
-    [eventId],
-  );
 
 const printAllAttendees = (db, eventId) =>
   all(
     db,
-    "SELECT name, email, checked_in AS checkedIn from attendees WHERE event_id = ?",
+    "SELECT name, email, checked_in AS checkedIn from attendees WHERE event_id = ? ORDER BY id",
     [eventId],
   );
 
