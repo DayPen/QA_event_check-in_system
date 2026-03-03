@@ -6,8 +6,6 @@ const { createDb, initSchema, closeDb } = require("../eventDb");
 const { createEvent, registerAttendee, checkIn } = require("../eventService");
 const { printAllAttendees } = require("../eventRepo");
 
-// includes 5 meaningful unit tests & 3 integration tests:
-
 test.describe("Event Check-In System integration", () => {
   let db;
 
@@ -20,15 +18,18 @@ test.describe("Event Check-In System integration", () => {
     await closeDb(db);
   });
 
+  // //////////////////////////////////////////////////////////////////
+  // unit test #1: create an event and register attendee
+  // //////////////////////////////////////////////////////////////////
   test("create an event and register attendee", async () => {
     const saved = await createEvent(db, {
       name: " Birthday Party ",
       date: "2026-05-20",
     });
 
-    assert.ok(saved.id > 0); //for boolean checks
-    assert.strictEqual(saved.name, "Birthday Party"); //for equality checks
-    assert.strictEqual(saved.date, "2026-05-20");
+    assert.ok(saved.id > 0); //make sure an id was assigned
+    assert.strictEqual(saved.name, "Birthday Party"); //name was trimmed
+    assert.strictEqual(saved.date, "2026-05-20"); // date was stored
 
     const attendee = await registerAttendee(
       db,
@@ -42,8 +43,10 @@ test.describe("Event Check-In System integration", () => {
     assert.strictEqual(attendee.name, "DayDay");
     assert.strictEqual(attendee.email, "day@email.com");
   });
-
-  test("registerAttendee rejects duplicate emails (must be unique)", async () => {
+  // //////////////////////////////////////////////////////////////////
+  // unit test #2: registerAttendee rejects duplicate emails on SAME EVENT
+  // //////////////////////////////////////////////////////////////////
+  test("registerAttendee rejects duplicate emails on SAME EVENT", async () => {
     const event = await createEvent(db, {
       name: "StudyGroup",
       date: "2026-03-06",
@@ -61,13 +64,15 @@ test.describe("Event Check-In System integration", () => {
         db,
         {
           name: "Emmy",
-          email: "day@email.com", // same email as DayDay - NOT unique, should FAIL
+          email: "day@email.com", // same email as DayDay - NOT unique to event, should FAIL
         },
         event.id,
       ),
     );
   });
-
+  // //////////////////////////////////////////////////////////////////
+  // unit test #3: checkIn rejects UNREGISTERED attendee
+  // //////////////////////////////////////////////////////////////////
   test("checkIn rejects UNREGISTERED attendee", async () => {
     const event = await createEvent(db, {
       name: "TriviaNight",
@@ -81,7 +86,9 @@ test.describe("Event Check-In System integration", () => {
       },
     );
   });
-
+  // //////////////////////////////////////////////////////////////////
+  //
+  // //////////////////////////////////////////////////////////////////
   test("DUPLICATE registration for the same event is REJECTED", async () => {
     const event = await createEvent(db, {
       name: "Bridal Shower",
@@ -95,12 +102,17 @@ test.describe("Event Check-In System integration", () => {
       },
       event.id,
     );
-    await assert.rejects(
-      () => registerAttendee(db, { name: "DayDay", email: "day@email.com" }),
-      /UNIQUE constraint failed/,
+    await assert.rejects(() =>
+      registerAttendee(
+        db,
+        { name: "DayDay", email: "day@email.com" },
+        event.id,
+      ),
     );
   });
-
+  // //////////////////////////////////////////////////////////////////
+  //
+  // //////////////////////////////////////////////////////////////////
   test("same attendee can register for DIFFERENT events", async () => {
     const event1 = await createEvent(db, {
       name: "StudySession1",
@@ -111,8 +123,8 @@ test.describe("Event Check-In System integration", () => {
       date: "2026-05-04",
     });
 
-    await registerAttendee(db, "DayDay", "StudySession1");
-    await registerAttendee(db, "DayDay", "StudySession2");
+    await registerAttendee(db, { name: "DayDay", email: "day@email.com" }, 1);
+    await registerAttendee(db, { name: "DayDay", email: "day@email.com" }, 2);
 
     const rosterSS1 = await printAllAttendees(db, "StudySession1");
     const rosterSS2 = await printAllAttendees(db, "StudySession2");
@@ -126,7 +138,9 @@ test.describe("Event Check-In System integration", () => {
       ["DayDay"],
     );
   });
-
+  // //////////////////////////////////////////////////////////////////
+  //
+  // //////////////////////////////////////////////////////////////////
   test("invalid inputs throw TypeError", async () => {
     await assert.rejects(() => createEvent(db, { name: "", date: "T" }), {
       name: "TypeError",

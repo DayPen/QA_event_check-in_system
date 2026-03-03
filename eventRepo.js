@@ -67,6 +67,5 @@ module.exports = {
   addAttendee,
   findAttendee,
   checkInAttendee,
-  printCheckedInAttendees,
   printAllAttendees,
 };
