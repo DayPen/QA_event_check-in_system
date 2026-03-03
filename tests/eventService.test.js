@@ -44,7 +44,7 @@ test.describe("Event Check-In System integration", () => {
       },
       event.id,
     );
-    assert.ok(attendee.id > 0);
+    assert.ok(attendee.id > 0); //make sure an id was assigned
     assert.strictEqual(attendee.name, "DayDay");
     assert.strictEqual(attendee.email, "day@email.com");
   });
@@ -70,7 +70,7 @@ test.describe("Event Check-In System integration", () => {
           db,
           {
             name: "Emmy",
-            email: "day@email.com", // same email as DayDay - NOT unique to event, should FAIL
+            email: "day@email.com", // email NOT unique to event, should FAIL
           },
           event.id,
         ),
@@ -105,7 +105,7 @@ test.describe("Event Check-In System integration", () => {
       () =>
         registerAttendee(
           db,
-          { name: "DayDay", email: "day@email.com" },
+          { name: "DayDay", email: "day@email.com" }, // already registered
           event.id,
         ),
       { message: "Info rec'd NOT UNIQUE to this event" },
@@ -125,7 +125,7 @@ test.describe("Event Check-In System integration", () => {
       },
     );
     await assert.rejects(
-      () => createEvent(db, { name: "HomeComing2026", date: "" }),
+      () => createEvent(db, { name: "", date: "2026-09-09" }),
       { name: "TypeError" },
     );
 
@@ -177,12 +177,62 @@ test.describe("Event Check-In System integration", () => {
       ["DayDay"],
     );
   });
+
+  // //////////////////////////////////////////////////////////////////////////
+  // Integration test 2: check-in allows REGISTERED attendee to check-in
+  // //////////////////////////////////////////////////////////////////////////
+  test("registered attendee can check in successfully", async () => {
+    const event = await createEvent(db, {
+      name: "TacoTuesday",
+      date: "2026-03-03",
+    });
+
+    await registerAttendee(
+      db,
+      { name: "Teddy", email: "ted@email.com" },
+      event.id,
+    );
+
+    await checkIn(db, "ted@email.com", event.id);
+    const attendees = await printAllAttendees(db, event.id);
+    const teddy = attendees.find(
+      (attendee) => attendee.email === "ted@email.com",
+    );
+
+    assert.strictEqual(teddy.checkedIn, 1); // 0 = NOT, 1 = IS checked-in
+  });
+
+  // /////////////////////////////////////////////////////////////////////
+  // Integration test 3: getAttendanceInfo returns stats
+  // /////////////////////////////////////////////////////////////////////
+  test("getAttendanceInfo returns correct info", async () => {
+    const event = await createEvent(db, {
+      name: "Spring Fling",
+      date: "2026-05-15",
+    });
+    // registering 3 attendees for the event
+    await registerAttendee(
+      db,
+      { name: "John", email: "jo@email.com" },
+      event.id,
+    );
+    await registerAttendee(
+      db,
+      { name: "Betty", email: "bet@email.com" },
+      event.id,
+    );
+    await registerAttendee(
+      db,
+      { name: "Ted", email: "ted@email.com" },
+      event.id,
+    );
+    // checking in only one of registered attendees
+    await checkIn(db, "jo@email.com", event.id);
+
+    const eventInfo = await getAttendanceInfo(db, event.id);
+    // ensure numbers calculated on attendanceInfo are as expected
+    assert.strictEqual(eventInfo.eventName, "Spring Fling");
+    assert.strictEqual(eventInfo.totalRegistered, 3);
+    assert.strictEqual(eventInfo.totalCheckedIn, 1);
+  });
 });
-
-// //////////////////////////////////////////////////////////////////////////
-// Integration test 2: check-in allows REGISTERED attendee to check-in
-// //////////////////////////////////////////////////////////////////////////
-
-// /////////////////////////////////////////////////////////////////////
-// Integration test 3: getAttendanceInfo returns stats
-// /////////////////////////////////////////////////////////////////////
