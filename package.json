@@ -7,7 +7,7 @@
   "description": "Design and implement a small Event Check-In and Attendance System, not to build a large application, but to demonstrate:\r -> Proper separation of logic and data handling\r -> Unit testing of business rules\r -> Integration testing of system components\r -> Automated testing using GitHub Actions (Continuous Integration)",
   "main": "eventDb.js",
   "directories": {
-    "test": "tests"
+    "test": "test"
   },
   "scripts": {
     "test": "node --test"
