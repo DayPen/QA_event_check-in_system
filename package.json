@@ -23,5 +23,6 @@
   "bugs": {
     "url": "https://github.com/DayPen/QA_event_check-in_system/issues"
   },
-  "homepage": "https://github.com/DayPen/QA_event_check-in_system#readme"
+  "homepage": "https://github.com/DayPen/QA_event_check-in_system#readme",
+  "devDependencies": {}
 }
