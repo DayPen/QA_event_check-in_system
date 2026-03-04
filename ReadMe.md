@@ -1,14 +1,18 @@
 # Integration Testing ReadMe
 
+Note to Z: I used your actions & basics example as a base to create most of this assignment. To test the workflow (green check on gitHub) I followed your instructions.
+
+## Please ignore "main" branch, only assess "master"
+
+... all the talk about "master" being out of favour made me want to try to rename it but it was more complicated than I anticipated. The WORKFLOW check is NOT working on "main" only works on "master".
+
+# Test in VScode
+
+In terminal, use "node --test" and watch the green check marks and blue list pop up.
+
 ## Scenario
 
-Design and implement a small Event Check-In and Attendance System, not to build a large application, but to demonstrate:
--> Proper separation of logic and data handling
--> Unit testing of business rules
--> Integration testing of system components
--> Automated testing using GitHub Actions (Continuous Integration)
-
-Builds on the concepts learned in: Unit Testing, Integration Testing, Continuous Integration (GitHub Actions) to date.
+Design and implement a small Event Check-In and Attendance System, not to build a large application, but to demonstrate: Proper separation of logic and data handling, Unit testing of business rules, Integration testing of system components, Automated testing using GitHub Actions (Continuous Integration).
 
 This lab includes:
 
@@ -39,9 +43,9 @@ The system must allow:
     -> Total checked-in
     -> List of checked-in attendees
 
-## Functional Expectations to Test
+## Functional Expectations Tested
 
-Your tests should verify at least the following:
+Tests verify the following:
 
 1. `addEvent` saves a valid event and normalizes `code` to uppercase.
 
